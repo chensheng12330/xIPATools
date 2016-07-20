@@ -32,11 +32,12 @@ cd "${ShellPath}"
 INPUT_PATH="$1"
 
 #Plist配置文件名
-MDM_PLIST="mdm.plist"
+MDM_PLIST="Info.plist"
 # 读取Plist内容(其余配置信息后续加)
 APP_Identify=$(/usr/libexec/PlistBuddy -c "Print:CFBundleIdentifier" "${INPUT_PATH}/${MDM_PLIST}")
 APP_DisplayName=$(/usr/libexec/PlistBuddy -c "Print:CFBundleDisplayName" "${INPUT_PATH}/${MDM_PLIST}")
 
+APPLICATIONIDENTIFIER="${TEAM_ID}.${APP_Identify}"
 #解包APK副本路径 ${APP_Identify}
 IPACopy="${ShellPath}/src_ipa/vcar.ipa"
 
@@ -88,91 +89,98 @@ DUP_APK_PATH="${Project_TEMP}"
 unzip -qo "${IPACopy}" -d "$DUP_APK_PATH"
 
 echo "(0x02) √  "
+echo " "
 
+############################################
 #step 0x03 替换图片资源
 
-#ICON
+#应用程序图标
+#AppIcon60x60@2x.png	AppIcon60x60@3x.png
 
 #启动图片
 #LaunchImage-568h@2x.png		LaunchImage-700@2x.png		LaunchImage@2x.png
 #LaunchImage-700-568h@2x.png	LaunchImage-800-667h@2x.png
 echo "(0x04)-->替换图片资源..."
+DUP_APP=$(ls "${DUP_APK_PATH}/Payload/")
 
-APP_Payload_NAME=$(ls)
+#${ShellPath}
+APP_Payload_PATH="${DUP_APK_PATH}/Payload/${DUP_APP}"
+echo $APP_Payload_PATH
+
+#AppIcon60x60@2x.png	AppIcon60x60@3x.png
+#ICONS
+cp -rf "${INPUT_PATH}/icon@2x.png" "${APP_Payload_PATH}/AppIcon60x60@2x.png"
+cp -rf "${INPUT_PATH}/icon@3x.png" "${APP_Payload_PATH}/AppIcon60x60@3x.png"
+
+#Default-568h@2x.png  LaunchImage-700@2x.png 640*1136
+cp -rf "${INPUT_PATH}/Default-568h@2x.png" "${APP_Payload_PATH}/LaunchImage-568h@2x.png"
+cp -rf "${INPUT_PATH}/Default-568h@2x.png" "${APP_Payload_PATH}/LaunchImage-700@2x.png"
+
+#LaunchImage@2x.png  LaunchImage-700-568h@2x.png
+cp -rf "${INPUT_PATH}/Default@2x.png" "${APP_Payload_PATH}/LaunchImage@2x.png"
+cp -rf "${INPUT_PATH}/Default@2x.png" "${APP_Payload_PATH}/LaunchImage-700-568h@2x.png"
+
+#Default@3x.png
+cp -rf "${INPUT_PATH}/Default@3x.png" "${APP_Payload_PATH}/LaunchImage-800-667h@2x.png"
+
+#Default@4x.png
+#cp -rf "${INPUT_PATH}/Default@4x.png" "${APP_Payload_PATH}"
+
+#证书
+cp -rf "${INPUT_PATH}/mdm.mobileprovision" "${APP_Payload_PATH}/embedded.mobileprovision"
+cp -rf "${INPUT_PATH}/entitlements.plist" "${APP_Payload_PATH}/"
+
+#替换App idet
+ENTITL_PLIST="${ShellPath}/${APP_Payload_PATH}/entitlements.plist"
+echo $ENTITL_PLIST
+
+plutil -replace application-identifier -string ${APPLICATIONIDENTIFIER} "${ENTITL_PLIST}"
+
+echo "(0x04)  √  "
+echo ""
+
+############################################
+echo "(0x05)-->正在修改APP工程中plist信息..."
+
+IPA_PLIST_PATH="${APP_Payload_PATH}/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $APP_DisplayName" "${IPA_PLIST_PATH}"
+/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $APP_Identify" "${IPA_PLIST_PATH}"
+#cp -rf "${INPUT_PATH}/${MDM_PLIST}" "${APP_Payload_PATH}/${MDM_PLIST}"
 
 
+rm -rf "${APP_Payload_PATH}/_CodeSignature"
 
+echo "(0x05)  √  "
+echo ""
 
-BUNDLEIDENTIFIER="com.temobi.xin"
-IPA_NAME="WeChat.ipa"
-APP_NAME="xin.app"
-EXE_NAME="xin"
-DISPLAYNAME="懒人辅助"
-LIBNAME="PerfectWX.dylib"
-BUNDLEFILE="PerfectWXRes.bundle"
-IMG_PATH="$(pwd)/img/*.png"
-AlwaysUsageDescription="抢红包"
+############################################
+echo "(0x06)-->正在重新签名..."
 
+codesign -fs "${DEVELOPER_SIGN}" --no-strict --entitlements="${ShellPath}/${APP_Payload_PATH}/entitlements.plist" "${ShellPath}/${APP_Payload_PATH}"
 
-PACKAGEPATH="$(pwd)/package/"
-APPLICATIONIDENTIFIER="${TEAM_ID}.${BUNDLEIDENTIFIER}"
+echo $APP_Payload_PATH
+echo "(0x06)  √  "
+echo ""
 
-TEMPDIR=$(mktemp -d)
-ORIGINDIR=$(pwd)
+############################################
+echo "(0x06)-->正在打包生成IPA..."
+#xcrun 开始打包
+IPA_PATH="${INPUT_PATH}/$2"
+/usr/bin/xcrun -sdk iphoneos PackageApplication -v "${ShellPath}/${APP_Payload_PATH}"  -o "${IPA_PATH}"
 
+#查询打包是否成功
+if [ ! -f "${IPA_PATH}" ]; then
+  echo "----------------------------------------------------"
+	echo "--> ERROR-错误501：找不到签名生成的IPA包, SO? 打包APP失败."
+	exit 1
+else
+	echo "(0x06) 打包APP完成! √ "
+  echo ""
+fi
 
-# 1.解压IPA包
-unzip -qo ${PACKAGEPATH}/${IPA_NAME} -d $TEMPDIR
+#清理资源
+#rm -rf ${DUP_APK_PATH}
 
-# 2.拷贝资源文件到临时目录
-cp ${PACKAGEPATH}/embedded.mobileprovision $TEMPDIR/
-cp ${PACKAGEPATH}/entitlements.plist $TEMPDIR/
-cp ${PACKAGEPATH}/libReveal.dylib $TEMPDIR/
-
-# 3.修改Plist文件
-cd $TEMPDIR
-
-plutil -replace application-identifier -string ${APPLICATIONIDENTIFIER} entitlements.plist
-
-INFO_PLIST_CHS=Payload/${APP_NAME}/zh_CN.lproj/InfoPlist.strings
-INFO_PLIST=Payload/${APP_NAME}/Info.plist
-
-
-/usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $DISPLAYNAME" "${INFO_PLIST_CHS}"
-/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $BUNDLEIDENTIFIER" "${INFO_PLIST}"
-/usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $DISPLAYNAME" "${INFO_PLIST}"
-/usr/libexec/PlistBuddy -c "Set :NSLocationAlwaysUsageDescription $AlwaysUsageDescription" "${INFO_PLIST}"
-/usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:array string 'location'" "${INFO_PLIST}"
-
-NSLocationAlwaysUsageDescription
-
-# 4.动态库注入
-
-cp ${BUILD_DIR}/${CONFIGURATION}-iphoneos/${LIBNAME} Payload/${APP_NAME}/
-cp -r ${BUILD_DIR}/${CONFIGURATION}-iphoneos/${BUNDLEFILE} Payload/${APP_NAME}/
-mv libReveal.dylib Payload/${APP_NAME}/
-insert_dylib --all-yes @executable_path/${LIBNAME} Payload/${APP_NAME}/${EXE_NAME}
-mv Payload/${APP_NAME}/${EXE_NAME}_patched Payload/${APP_NAME}/${EXE_NAME}
-insert_dylib --all-yes @executable_path/libReveal.dylib Payload/${APP_NAME}/${EXE_NAME}
-mv Payload/${APP_NAME}/${EXE_NAME}_patched Payload/${APP_NAME}/${EXE_NAME}
-chmod +x Payload/${APP_NAME}/${EXE_NAME}
-
-# 5.删除多余的Target和签名
-rm -rf Payload/${APP_NAME}/_CodeSignature
-rm -rf Payload/${APP_NAME}/PlugIns
-rm -rf Payload/${APP_NAME}/Watch
-
-# 6.替换图片资源
-cp -rf ${IMG_PATH} Payload/${APP_NAME}
-
-# 6.重新签名
-cp embedded.mobileprovision Payload/${APP_NAME}/
-codesign -fs "${DEVELOPER_SIGN}" --no-strict --entitlements=entitlements.plist Payload/${APP_NAME}/libReveal.dylib
-codesign -fs "${DEVELOPER_SIGN}" --no-strict --entitlements=entitlements.plist Payload/${APP_NAME}/${LIBNAME}
-codesign -fs "${DEVELOPER_SIGN}" --no-strict --entitlements=entitlements.plist Payload/${APP_NAME}
-
-# 7.拷贝.app替换假Target生成的.app
-cp -rf Payload/${APP_NAME} ${BUILD_DIR}/${CONFIGURATION}-iphoneos/
-
-# 8.清理工作
-rm -rf ${TEMPDIR}
+echo '----------------------------------------------------'
+echo "安装包--->  ${INPUT_PATH}"
+echo '----------------------------------------------------'
