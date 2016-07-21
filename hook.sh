@@ -124,7 +124,7 @@ cp -rf "${INPUT_PATH}/Default@2x.png" "${APP_Payload_PATH}/LaunchImage-700-568h@
 cp -rf "${INPUT_PATH}/Default@3x.png" "${APP_Payload_PATH}/LaunchImage-800-667h@2x.png"
 
 #Default@4x.png
-#cp -rf "${INPUT_PATH}/Default@4x.png" "${APP_Payload_PATH}"
+cp -rf "${INPUT_PATH}/Default@4x.png" "${APP_Payload_PATH}/LaunchImage-800-Portrait-736h@3x.png"
 
 #证书
 cp -rf "${INPUT_PATH}/mdm.mobileprovision" "${APP_Payload_PATH}/embedded.mobileprovision"
