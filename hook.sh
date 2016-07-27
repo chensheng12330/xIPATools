@@ -39,7 +39,7 @@ APP_DisplayName=$(/usr/libexec/PlistBuddy -c "Print:CFBundleDisplayName" "${INPU
 
 APPLICATIONIDENTIFIER="${TEAM_ID}.${APP_Identify}"
 #解包APK副本路径 ${APP_Identify}
-IPACopy="${ShellPath}/src_ipa/vcar.ipa"
+IPACopy="${ShellPath}/src_ipa/${APP_Identify}.ipa"
 
 #工作副本目录,  可更新路径，绝对路径，脚本内自定义
 Workspace="workspace"
