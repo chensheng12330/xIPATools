@@ -36,6 +36,8 @@ MDM_PLIST="Info.plist"
 # 读取Plist内容(其余配置信息后续加)
 APP_Identify=$(/usr/libexec/PlistBuddy -c "Print:CFBundleIdentifier" "${INPUT_PATH}/${MDM_PLIST}")
 APP_DisplayName=$(/usr/libexec/PlistBuddy -c "Print:CFBundleDisplayName" "${INPUT_PATH}/${MDM_PLIST}")
+APP_Version=$(/usr/libexec/PlistBuddy -c "Print:CFBundleShortVersionString" "${INPUT_PATH}/${MDM_PLIST}")
+APP_needSIP=$(/usr/libexec/PlistBuddy -c "Print:needSIP" "${INPUT_PATH}/${MDM_PLIST}")
 
 APPLICATIONIDENTIFIER="${TEAM_ID}.${APP_Identify}"
 #解包APK副本路径 ${APP_Identify}
@@ -145,6 +147,9 @@ echo "(0x05)-->正在修改APP工程中plist信息..."
 IPA_PLIST_PATH="${APP_Payload_PATH}/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $APP_DisplayName" "${IPA_PLIST_PATH}"
 /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $APP_Identify" "${IPA_PLIST_PATH}"
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $APP_Version"  "${IPA_PLIST_PATH}"
+/usr/libexec/PlistBuddy -c "Set :needSIP $APP_needSIP" "${IPA_PLIST_PATH}"
+
 #cp -rf "${INPUT_PATH}/${MDM_PLIST}" "${APP_Payload_PATH}/${MDM_PLIST}"
 
 
