@@ -67,7 +67,7 @@ fi
 
 #检测IPA文件是否存在
 if [ ! -f "${IPACopy}" ]; then
-	echo "--> ERROR-错误501：找不到封IPA原始包:[${APP_Identify}.apk], 请复制对应的IPA包到 /src_ipa/ 目录中."
+	echo "--> ERROR-错误501：找不到封IPA原始包:[${APP_Identify}.ipa], 请复制对应的IPA包到 /src_ipa/ 目录中."
 	exit 1
 else
   echo "(0x00) √  "
